@@ -347,6 +347,11 @@ rows(cols::Tup) = Columns(cols)
 
 rows(t, which...) = rows(columns(t, which...))
 
+# Replace empty Columns object with one of correct length and eltype
+replace_placeholder(t, ::Columns{Tuple{}}) = fill(Tuple(), length(t))
+replace_placeholder(t, ::Columns{NamedTuple{(), Tuple{}}}) = fill(NamedTuple(), length(t))
+replace_placeholder(t, cols) = cols
+
 _cols_tuple(xs::Columns) = columns(xs)
 _cols_tuple(xs::AbstractArray) = (xs,)
 concat_cols(xs, ys) = rows(concat_tup(_cols_tuple(xs), _cols_tuple(ys)))
@@ -387,7 +392,7 @@ end
 Base.getindex(d::ColDict, key) = rows(d[], key)
 Base.getindex(d::ColDict, key::AbstractArray) = key
 
-function Base.setindex!(d::ColDict, x, key::Union{Symbol, Int})
+function Base.setindex!(d::ColDict, x, key::Union{Symbol, Integer})
     k = _colindex(d.names, key, 0)
     col = d[x]
     if k == 0
@@ -405,13 +410,21 @@ function Base.setindex!(d::ColDict, x, key::Union{Symbol, Int})
     end
 end
 
-set!(d::ColDict, key::Union{Symbol, Int}, x) = setindex!(d, x, key)
+Base.@deprecate set!(d::ColDict, key, x) setindex!(d, x, key)
+
+transform!(d::ColDict, changes::Pair...) = transform!(d, changes)
+
+function transform!(d::ColDict, changes)
+    foreach(changes) do (key, val)::Pair
+        d[key] = val
+    end
+end
 
 function Base.haskey(d::ColDict, key)
     _colindex(d.names, key, 0) != 0
 end
 
-function Base.insert!(d::ColDict, index, key, col)
+function Base.insert!(d::ColDict, index::Integer, (key, col)::Pair)
     if haskey(d, key)
         error("Key $key already exists. Use dict[key] = col instead of inserting.")
     else
@@ -425,47 +438,32 @@ function Base.insert!(d::ColDict, index, key, col)
     end
 end
 
-function insertafter!(d::ColDict, i, key, col)
+function Base.insert!(d::ColDict, index::Integer, newcols)
+    for new::Pair in newcols
+        insert!(d, index, new)
+        index += 1
+    end
+end
+
+Base.insert!(d::ColDict, index::Integer, newcols::Pair...) = insert!(d, index, newcols)
+
+function insertafter!(d::ColDict, i, args...)
     k = _colindex(d.names, i, 0)
     if k == 0
         error("$i not found. Cannot insert column after $i")
     end
-    insert!(d, k+1, key, col)
+    insert!(d, k+1, args...)
 end
 
-function insertbefore!(d::ColDict, i, key, col)
+function insertbefore!(d::ColDict, i, args...)
     k = _colindex(d.names, i, 0)
     if k == 0
         error("$i not found. Cannot insert column after $i")
     end
-    insert!(d, k, key, col)
+    insert!(d, k, args...)
 end
 
-function Base.pop!(d::ColDict, key::Union{Symbol, Int}=length(d.names))
-    k = _colindex(d.names, key, 0)
-    local col
-    if k == 0
-        error("Column $key not found")
-    else
-        col = d.columns[k]
-        deleteat!(d.names, k)
-        deleteat!(d.columns, k)
-        idx = [pk[1] for pk in enumerate(d.pkey) if pk[2] == k]
-        deleteat!(d.pkey, idx)
-        for i in 1:length(d.pkey)
-            if d.pkey[i] > k
-                d.pkey[i] -= 1
-            end
-        end
-        if !isempty(idx) && d.copy === nothing
-            # set copy to true
-            d.copy = true
-        end
-    end
-    col
-end
-
-function rename!(d::ColDict, col::Union{Symbol, Int}, newname)
+function rename!(d::ColDict, (col, newname)::Pair)
     k = _colindex(d.names, col, 0)
     if k == 0
         error("$col not found. Cannot rename it.")
@@ -473,27 +471,14 @@ function rename!(d::ColDict, col::Union{Symbol, Int}, newname)
     d.names[k] = newname
 end
 
-Base.push!(d::ColDict, key::AbstractString, x) = push!(d, Symbol(key), x)
-function Base.push!(d::ColDict, key::Union{Symbol, Int}, x)
+@deprecate rename!(t::ColDict, col::Union{Symbol, Integer}, newname) rename!(t, col => newname)
+
+rename!(t::ColDict, changes) = foreach(change::Pair -> rename!(t, change), changes)
+rename!(t::ColDict, changes::Pair...) = rename!(t, changes)
+
+function Base.push!(d::ColDict, (key, x)::Pair)
     push!(d.names, key)
     push!(d.columns, rows(d.src, x))
-end
-
-for s in [:(Base.pop!), :(Base.push!), :(rename!), :(set!)]
-    if s == :(Base.pop!)
-        typ = :(Union{Symbol, Int})
-    else
-        typ = :Pair
-        @eval $s(t::ColDict, x::Pair) = $s(t, x.first, x.second)
-    end
-    @eval begin
-        function $s(t::ColDict, args)
-            for i in args
-                $s(t, i)
-            end
-        end
-        $s(t::ColDict, args::Vararg{$typ}) = $s(t, args)
-    end
 end
 
 function _cols(expr)
@@ -515,115 +500,106 @@ macro cols(expr)
     _cols(expr)
 end
 
-# Modifying a columns
+# Modifying columns
 
 """
-    setcol(t::Table, col::Union{Symbol, Int}, x::Selection)
+    transform(t::Table, changes::Pair...)
 
-Sets a `x` as the column identified by `col`. Returns a new table.
-
-    setcol(t::Table, map::Pair{}...)
-
-Set many columns at a time.
+Transform columns of `t`. For each pair `col => value` in `changes` the column `col` is replaced
+by the `AbstractVector` `value`. If `col` is not an existing column, a new column is created.
 
 # Examples:
 
     t = table([1,2], [3,4], names=[:x, :y])
 
     # change second column to [5,6]
-    setcol(t, 2 => [5,6])
-    setcol(t, :y , :y => x -> x + 2)
+    transform(t, 2 => [5,6])
+    transform(t, :y => :y => x -> x + 2)
 
     # add [5,6] as column :z
-    setcol(t, :z => 5:6)
-    setcol(t, :z, :y => x -> x + 2)
+    transform(t, :z => 5:6)
+    transform(t, :z => :y => x -> x + 2)
 
     # replacing the primary key results in a re-sorted copy
     t = table([0.01, 0.05], [1,2], [3,4], names=[:t, :x, :y], pkey=:t)
-    t2 = setcol(t, :t, [0.1,0.05])
-"""
-setcol(t, args...) = @cols set!(t, args...)
+    t2 = transform(t, :t => [0.1,0.05])
 
-"""
-    pushcol(t, name, x)
-
-Push a column `x` to the end of the table. `name` is the name for the new column. Returns a new table.
-
-    pushcol(t, map::Pair...)
-
-Push many columns at a time.
-
-# Example
-
+    # the column :z is not part of t so a new column is added
     t = table([0.01, 0.05], [2,1], [3,4], names=[:t, :x, :y], pkey=:t)
-    pushcol(t, :z, [1//2, 3//4])
     pushcol(t, :z => [1//2, 3//4])
 """
-pushcol(t, args...) = @cols push!(t, args...)
+transform(t, args...) = @cols transform!(t, args...)
+
+@deprecate setcol(t, args::Pair...) transform(t, args...)
+@deprecate setcol(t, key::Union{Int, Symbol}, val) transform(t, key => val)
+@deprecate setcol(t, args) transform(t, args)
+
+@deprecate pushcol(t, args::Pair...) transform(t, args...)
+@deprecate pushcol(t, key::Union{Int, Symbol}, val) transform(t, key => val)
+@deprecate pushcol(t, args) transform(t, args)
+
+@deprecate popcol(t, args...) select(t, Not(args...))
+@deprecate popcol(t) select(t, Not(ncols(t)))
 
 """
-    popcol(t, cols...)
+    insertcols(t, position::Integer, map::Pair...)
 
-Remove the column(s) `cols` from the table. Returns a new table.
+For each pair `name => col` in `map`, insert a column `col` named `name` starting at `position`.
+Returns a new table.
 
 # Example
 
     t = table([0.01, 0.05], [2,1], [3,4], names=[:t, :x, :y], pkey=:t)
-    popcol(t, :x)
+    insertcol(t, 2, :w => [0,1])
 """
-popcol(t, args...) = @cols pop!(t, args...)
+insertcols(t, i::Integer, args...) = @cols insert!(t, i, args...)
+
+@deprecate insertcol(t, i, name, x) insertcols(t, i, name => x)
 
 """
-    insertcol(t, position::Integer, name, x)
+    insertcolsafter(t, after, map::Pair...)
 
-Insert a column `x` named `name` at `position`. Returns a new table.
+For each pair `name => col` in `map`, insert a column `col` named `name` after `after`.
+Returns a new table.
 
 # Example
 
     t = table([0.01, 0.05], [2,1], [3,4], names=[:t, :x, :y], pkey=:t)
-    insertcol(t, 2, :w, [0,1])
+    insertcolsafter(t, :t, :w => [0,1])
 """
-insertcol(t, i::Integer, name, x) = @cols insert!(t, i, name, x)
+insertcolsafter(t, after, args...) = @cols insertafter!(t, after, args...)
+
+@deprecate insertcolafter(t, i, name, x) insertcolsafter(t, i, name => x)
 
 """
-    insertcolafter(t, after, name, col)
+insertcolsbefore(t, before, map::Pair...)
 
-Insert a column `col` named `name` after `after`. Returns a new table.
+For each pair `name => col` in `map`, insert a column `col` named `name` before `before`.
+Returns a new table.
 
 # Example
 
     t = table([0.01, 0.05], [2,1], [3,4], names=[:t, :x, :y], pkey=:t)
-    insertcolafter(t, :t, :w, [0,1])
+    insertcolsbefore(t, :x, :w => [0,1])
 """
-insertcolafter(t, after, name, x) = @cols insertafter!(t, after, name, x)
+insertcolsbefore(t, before, args...) = @cols insertbefore!(t, before, args...)
 
-"""
-    insertcolbefore(t, before, name, col)
-
-Insert a column `col` named `name` before `before`. Returns a new table.
-
-# Example
-
-    t = table([0.01, 0.05], [2,1], [3,4], names=[:t, :x, :y], pkey=:t)
-    insertcolbefore(t, :x, :w, [0,1])
-"""
-insertcolbefore(t, before, name, x) = @cols insertbefore!(t, before, name, x)
+@deprecate insertcolbefore(t, i, name, x) insertcolsbefore(t, i, name => x)
 
 """
-    renamecol(t, col, newname)
+    rename(t, map::Pair...)
 
-Set `newname` as the new name for column `col` in `t`. Returns a new table.
-
-    renamecol(t, map::Pair...)
-
-Rename multiple columns at a time.
+For each pair `col => newname` in `map`, set `newname` as the new name for column `col` in `t`.
+Returns a new table.
 
 # Example
 
     t = table([0.01, 0.05], [2,1], names=[:t, :x])
-    renamecol(t, :t, :time)
+    rename(t, :t => :time)
 """
-renamecol(t, args...) = @cols rename!(t, args...)
+rename(t, args...) = @cols rename!(t, args...)
+
+@deprecate renamecol(t, args...) rename(t, args...)
 
 ## Utilities for mapping and reduction with many functions / OnlineStats
 

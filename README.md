@@ -1,6 +1,6 @@
 | JuliaDB docs | Build | Coverage |
 |--------------|-------|----------|
-| [![](https://img.shields.io/badge/docs-stable-blue.svg)](http://juliadb.org/stable/) [![](https://img.shields.io/badge/docs-latest-blue.svg)](http://juliadb.org/latest/) | [![Build Status](https://travis-ci.org/JuliaComputing/IndexedTables.jl.svg?branch=master)](https://travis-ci.org/JuliaComputing/IndexedTables.jl)| [![codecov.io](https://codecov.io/github/JuliaComputing/IndexedTables.jl/coverage.svg?branch=master)](http://codecov.io/github/JuliaComputing/IndexedTables.jl?branch=master) |
+| [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://juliacomputing.github.io/JuliaDB.jl/stable/) [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://juliacomputing.github.io/JuliaDB.jl/latest/) | [![Build Status](https://travis-ci.org/JuliaComputing/IndexedTables.jl.svg?branch=master)](https://travis-ci.org/JuliaComputing/IndexedTables.jl)| [![codecov.io](https://codecov.io/github/JuliaComputing/IndexedTables.jl/coverage.svg?branch=master)](http://codecov.io/github/JuliaComputing/IndexedTables.jl?branch=master) |
 
 # IndexedTables.jl
 

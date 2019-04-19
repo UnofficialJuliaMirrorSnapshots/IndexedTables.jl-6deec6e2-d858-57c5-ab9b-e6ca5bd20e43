@@ -554,62 +554,74 @@ end
 
 @testset "column manipulation" begin
     t = table([1, 2], [3, 4], names=[:x, :y])
-    @test setcol(t, 2, [5, 6]) == table([1, 2], [5, 6], names=Symbol[:x, :y])
-    @test setcol(t, 2 => [5, 6]) == setcol(t, 2, [5, 6])
-    @test setcol(t, 2 => [5, 6], 1 => [7, 12]) == table([7, 12], [5, 6], names=Symbol[:x, :y]) ==
-        setcol(t, (2 => [5, 6], 1 => [7, 12]))
-    @test setcol(t, :x, :x => (x->1 / x)) == table([1.0, 0.5], [3, 4], names=Symbol[:x, :y])
+    @test transform(t, 2 => [5, 6]) == table([1, 2], [5, 6], names=Symbol[:x, :y])
+    @test transform(t, 2 => [5, 6], 1 => [7, 12]) == table([7, 12], [5, 6], names=Symbol[:x, :y]) ==
+        transform(t, (2 => [5, 6], 1 => [7, 12]))
+    @test transform(t, :x => :x => (x->1 / x)) == table([1.0, 0.5], [3, 4], names=Symbol[:x, :y])
     t = table([0.01, 0.05], [1, 2], [3, 4], names=[:t, :x, :y], pkey=:t)
-    t2 = setcol(t, :t, [0.1, 0.05])
+    t2 = transform(t, :t => [0.1, 0.05])
     @test t2 == table([0.05, 0.1], [2,1], [4,3], names=[:t,:x,:y])
     t = table([0.01, 0.05], [2, 1], [3, 4], names=[:t, :x, :y], pkey=:t)
-    @test pushcol(t, :z, [1 // 2, 3 // 4]) == table([0.01, 0.05], [2, 1], [3, 4], [1//2, 3//4], names=Symbol[:t, :x, :y, :z])
-    @test pushcol(t, :z => [1 // 2, 3 // 4]) == pushcol(t, :z, [1 // 2, 3 // 4])
-    @test pushcol(t, :z => [1 // 2, 3 // 4], :w => [0, 1]) ==
+    @test transform(t, :z => [1 // 2, 3 // 4]) == table([0.01, 0.05], [2, 1], [3, 4], [1//2, 3//4], names=Symbol[:t, :x, :y, :z])
+    @test transform(t, :z => [1 // 2, 3 // 4], :w => [0, 1]) ==
         table([0.01, 0.05], [2, 1], [3, 4], [1//2, 3//4], [0, 1], names=Symbol[:t, :x, :y, :z, :w]) ==
-        pushcol(t, (:z => [1 // 2, 3 // 4], :w => [0, 1]))
+        transform(t, (:z => [1 // 2, 3 // 4], :w => [0, 1]))
     t = table([0.01, 0.05], [2, 1], [3, 4], names=[:t, :x, :y], pkey=(:t,:x))
-    @test popcol(t, :t) == table([1, 2], [4,3], names=Symbol[:x, :y])
-    @test popcol(t) == table([0.01, 0.05], [2, 1], names=Symbol[:t, :x])
-    @test popcol(t, :x, :y) == table([0.01, 0.05], names=Symbol[:t]) == popcol(t, (:x, :y))
-    @test pushcol(t, :z, [1 // 2, 3 // 4]) == table([0.01, 0.05], [2, 1], [3, 4], [1//2, 3//4], names=Symbol[:t, :x, :y, :z])
+    @test select(t, Not(:t)) == table([1, 2], [4,3], names=Symbol[:x, :y])
+    @test select(t, Not(ncols(t))) == table([0.01, 0.05], [2, 1], names=Symbol[:t, :x])
+    @test select(t, Not(:x, :y)) == table([0.01, 0.05], names=Symbol[:t]) == select(t, Not((:x, :y)))
+    @test transform(t, :z => [1 // 2, 3 // 4]) == table([0.01, 0.05], [2, 1], [3, 4], [1//2, 3//4], names=Symbol[:t, :x, :y, :z])
 
     # 99
-    @test popcol(t, :x).pkey == [1]
+    @test select(t, Not(:x)).pkey == [1]
 
     # "Copy-on write"
     t = table([1,2,3], [4,5,6], names=[:x,:y], pkey=:x)
     tcopy = copy(t)
-    @test column(pushcol(t, :z, [7,8,9]), :x) === column(t, :x)
+    @test column(transform(t, :z => [7,8,9]), :x) === column(t, :x)
     @test t == tcopy
 
-    @test column(setcol(t, :y, [7,8,9]), :x) === column(t, :x)
+    @test column(transform(t, :y => [7,8,9]), :x) === column(t, :x)
     @test t == tcopy
 
     # seting or popping an index column causes copy
-    t2 = setcol(t, :x, [9,8,7])
+    t2 = transform(t, :x => [9,8,7])
     @test column(t2, :y) !== column(t, :y)
     @test t == tcopy
     @test t2 == table([7,8,9], [6,5,4], names=[:x, :y])
 
-    t2 = popcol(t, :x)
+    t2 = select(t, Not(:x))
     @test column(t2, :y) !== column(t, :y)
     @test t == tcopy
     @test t2 == table([4,5,6], names=[:y])
 
     t = table([0.01, 0.05], [2, 1], [3, 4], names=[:t, :x, :y], pkey=:t)
-    @test insertcol(t, 2, :w, [0, 1]) == table([0.01, 0.05], [0, 1], [2, 1], [3, 4], names=Symbol[:t, :w, :x, :y])
+    @test insertcols(t, 2, :w => [0, 1]) == table([0.01, 0.05], [0, 1], [2, 1], [3, 4], names=Symbol[:t, :w, :x, :y])
     t = table([0.01, 0.05], [2, 1], [3, 4], names=[:t, :x, :y], pkey=:t)
-    @test insertcolafter(t, :t, :w, [0, 1]) == table([0.01, 0.05], [0, 1], [2, 1], [3, 4], names=Symbol[:t, :w, :x, :y])
+    @test insertcolsafter(t, :t, :w => [0, 1]) == table([0.01, 0.05], [0, 1], [2, 1], [3, 4], names=Symbol[:t, :w, :x, :y])
     t = table([0.01, 0.05], [2, 1], [3, 4], names=[:t, :x, :y], pkey=:t)
-    @test insertcolbefore(t, :x, :w, [0, 1]) == table([0.01, 0.05], [0, 1], [2, 1], [3, 4], names=Symbol[:t, :w, :x, :y])
+    @test insertcolsbefore(t, :x, :w => [0, 1]) == table([0.01, 0.05], [0, 1], [2, 1], [3, 4], names=Symbol[:t, :w, :x, :y])
+
+    t = table([0.01, 0.05], [2, 1], [3, 4], names=[:t, :x, :y], pkey=:t)
+    @test insertcols(t, 2, :w => [0, 1], :z => [2, 3]) ==
+        table([0.01, 0.05], [0, 1], [2, 3], [2, 1], [3, 4], names=Symbol[:t, :w, :z, :x, :y]) ==
+        insertcols(t, 2, :w => [0, 1], :z => [2, 3])
+    t = table([0.01, 0.05], [2, 1], [3, 4], names=[:t, :x, :y], pkey=:t)
+    @test insertcolsafter(t, :t, :w => [0, 1], :z => [2, 3]) ==
+        table([0.01, 0.05], [0, 1], [2, 3], [2, 1], [3, 4], names=Symbol[:t, :w, :z, :x, :y]) ==
+        insertcolsafter(t, :t, (:w => [0, 1], :z => [2, 3]))
+    t = table([0.01, 0.05], [2, 1], [3, 4], names=[:t, :x, :y], pkey=:t)
+    @test insertcolsbefore(t, :x, :w => [0, 1], :z => [2, 3]) ==
+        table([0.01, 0.05], [0, 1], [2, 3], [2, 1], [3, 4], names=Symbol[:t, :w, :z, :x, :y]) ==
+        insertcolsbefore(t, :x, (:w => [0, 1], :z => [2, 3]))
+
     t = table([0.01, 0.05], [2, 1], names=[:t, :x])
-    @test renamecol(t, :t, :time) == table([0.01, 0.05], [2, 1], names=Symbol[:time, :x])
-    @test_throws ErrorException renamecol(t, :tt, :time)
-    @test renamecol(t, :t => :time) == renamecol(t, :t, :time)
-    @test renamecol(t, :t => :time, :x => :position) ==
+    @test rename(t, :t => :time) == table([0.01, 0.05], [2, 1], names=Symbol[:time, :x])
+    @test_throws ErrorException rename(t, :tt => :time)
+    @test rename(t, :t => :time) == rename(t, :t => :time)
+    @test rename(t, :t => :time, :x => :position) ==
         table([0.01, 0.05], [2, 1], names=Symbol[:time, :position]) ==
-        renamecol(t, (:t => :time, :x => :position))
+        rename(t, (:t => :time, :x => :position))
 end
 
 @testset "map" begin
@@ -933,7 +945,7 @@ using OnlineStats
     b = table(Columns(a=[1, 1, 2], b=[3, 2, 2], c=[4, 5, 2]), pkey=(1,2))
 
     @test groupreduce(min, a, select=3) == a
-    @test groupreduce(min, b, select=3) == renamecol(b, :c, :min)
+    @test groupreduce(min, b, select=3) == rename(b, :c => :min)
     @test_throws ArgumentError groupreduce(+, b, [:x, :y]) # issue JuliaDB.jl#100
     t = table([1, 1, 1, 2, 2, 2], [1, 1, 2, 2, 1, 1], [1, 2, 3, 4, 5, 6], names=[:x, :y, :z], pkey=(:x, :y))
     @test groupreduce(+, t, :x, select=:z) == table([1, 2], [6, 15], names=Symbol[:x, :+])
@@ -1168,7 +1180,7 @@ end
     @test flatten(x, :y) == table([1,1,2,2], [3,4,7,8], [5,6,9,10], names=[:x,:a, :b])
     x = table([1,2], [(2i for i in 1:3 if isodd(i)), (5, nothing)])
     @test flatten(x) == table(([1,1,2,2], [2,6,5,nothing]))
-    
+
     # test that isiterable_val output is known statically
     f(x) = IndexedTables.isiterable_val(x) ? x : nothing
     val1 = @inferred f([1, 2])
@@ -1180,7 +1192,7 @@ end
     @test groupby((:normy => x->Iterators.repeated(mean(x), length(x)),),
                   t, :x, select=:y, flatten=true) == table([1,1,2,2], [3.5,3.5,5.5,5.5], names=[:x, :normy])
     t=table([1,1,1,2,2,2], [1,1,2,1,1,2], [1,2,3,4,5,6], names=[:x,:y,:z], pkey=[1,2]);
-    @test groupby(identity, t, (:x, :y), select=:z, flatten = true) == renamecol(t, :z, :identity)
+    @test groupby(identity, t, (:x, :y), select=:z, flatten = true) == rename(t, :z => :identity)
     @test groupby(identity, t, (:x, :y), select=:z, flatten = true).pkey == [1,2]
     # If return type is non iterable, return the same as non flattened
     @test groupby(i -> (y = :y,), t, :x, flatten=true) == groupby(i -> (y = :y,), t, :x, flatten=false)

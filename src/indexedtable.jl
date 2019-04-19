@@ -292,6 +292,8 @@ end
 # for a table, selecting the "value" means selecting all fields
 valuenames(t::AbstractIndexedTable) = (colnames(t)...,)
 
+ncols(t::AbstractIndexedTable) = length(colnames(t))
+
 """
     pkeys(itr::IndexedTable)
 

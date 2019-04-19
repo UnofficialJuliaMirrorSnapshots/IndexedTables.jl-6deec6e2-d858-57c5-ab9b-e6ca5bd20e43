@@ -1,9 +1,9 @@
-using Test, IndexedTables, OnlineStats, WeakRefStrings, Tables, Random, Dates, 
+using Test, IndexedTables, OnlineStats, WeakRefStrings, Tables, Random, Dates,
     PooledArrays, SparseArrays, WeakRefStrings, LinearAlgebra, Statistics,
     TableTraits, IteratorInterfaceExtensions, Serialization, DataValues
 
 using IndexedTables: excludecols, sortpermby, primaryperm, best_perm_estimate, hascolumns,
-    collect_columns_flattened
+    collect_columns_flattened, transform
 
 include("test_tables.jl")
 include("test_missing.jl")
