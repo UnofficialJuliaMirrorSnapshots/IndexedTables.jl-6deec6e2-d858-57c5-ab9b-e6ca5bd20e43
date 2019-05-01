@@ -4,8 +4,8 @@ using PooledArrays, SparseArrays, Statistics, WeakRefStrings
 
 using OnlineStatsBase: OnlineStat, fit!
 
-using StructArrays: StructVector, StructArray, foreachfield, fieldarrays,
-    collect_structarray, staticschema, ArrayInitializer, refine_perm!, collect_structarray,
+using StructArrays: StructVector, StructArray, fieldarrays,
+    staticschema, ArrayInitializer, refine_perm!, collect_structarray,
     collect_empty_structarray, grow_to_structarray!, collect_to_structarray!, replace_storage,
     GroupPerm, GroupJoinPerm, roweq, rowcmp
 

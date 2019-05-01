@@ -181,8 +181,8 @@ function Base.join(f, left::Dataset, right::Dataset;
     rdata = replace_placeholder(right, rdata)
 
     KT = map_params(promote_type, eltype(lkey), eltype(rkey))
-    lkey = Columns{KT}(fieldarrays(lkey))
-    rkey = Columns{KT}(fieldarrays(rkey))
+    lkey = Columns{KT}(Tuple(fieldarrays(lkey)))
+    rkey = Columns{KT}(Tuple(fieldarrays(rkey)))
     join_iter = GroupJoinPerm(GroupPerm(lkey, lperm), GroupPerm(rkey, rperm))
     init = !group && f === concat_tup ? init_left_right(ldata, rdata) : nothing
     typ, grp = Val{how}(), Val{group}()

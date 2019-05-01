@@ -153,7 +153,7 @@ _setindex!(t::NDSparse{T,D}, rhs, idxs::D) where {T,D} = _setindex_scalar!(t, rh
 #_setindex!(t::NDSparse, rhs, idxs::Tuple{Vararg{Real}}) = _setindex_scalar!(t, rhs, idxs)
 
 function _setindex_scalar!(t, rhs, idxs)
-    push!(t.index_buffer, idxs)
+    foreach(push!, columns(t.index_buffer), idxs)
     push!(t.data_buffer, rhs)
     t
 end

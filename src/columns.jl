@@ -72,7 +72,7 @@ ncols(c::AbstractArray) = 1
 
 summary(c::Columns{D}) where {D<:Tuple} = "$(length(c))-element Columns{$D}"
 
-_sizehint!(c::Columns, n::Integer) = (foreachfield(x->_sizehint!(x,n), c); c)
+_sizehint!(c::Columns, n::Integer) = (foreach(x->_sizehint!(x,n), columns(c)); c)
 
 function _strip_pair(c::Columns{<:Pair})
     f, s = map(columns, fieldarrays(c))
@@ -91,10 +91,10 @@ end
 
 # row operations
 
-copyrow!(I::Columns, i, src) = foreachfield(c->copyelt!(c, i, src), I)
-copyrow!(I::Columns, i, src::Columns, j) = foreachfield((c1,c2)->copyelt!(c1, i, c2, j), I, src)
+copyrow!(I::Columns, i, src) = foreach(c->copyelt!(c, i, src), columns(I))
+copyrow!(I::Columns, i, src::Columns, j) = foreach((c1,c2)->copyelt!(c1, i, c2, j), columns(I), columns(src))
 copyrow!(I::AbstractArray, i, src::AbstractArray, j) = (@inbounds I[i] = src[j])
-pushrow!(to::Columns, from::Columns, i) = foreachfield((a,b)->push!(a, b[i]), to, from)
+pushrow!(to::Columns, from::Columns, i) = foreach((a,b)->push!(a, b[i]), columns(to), columns(from))
 pushrow!(to::AbstractArray, from::AbstractArray, i) = push!(to, from[i])
 
 # test that the row on the right is "as of" the row on the left, i.e.
@@ -415,7 +415,7 @@ Base.@deprecate set!(d::ColDict, key, x) setindex!(d, x, key)
 transform!(d::ColDict, changes::Pair...) = transform!(d, changes)
 
 function transform!(d::ColDict, changes)
-    foreach(changes) do (key, val)::Pair
+    Base.foreach(changes) do (key, val)::Pair
         d[key] = val
     end
 end
@@ -473,7 +473,7 @@ end
 
 @deprecate rename!(t::ColDict, col::Union{Symbol, Integer}, newname) rename!(t, col => newname)
 
-rename!(t::ColDict, changes) = foreach(change::Pair -> rename!(t, change), changes)
+rename!(t::ColDict, changes) = Base.foreach(change::Pair -> rename!(t, change), changes)
 rename!(t::ColDict, changes::Pair...) = rename!(t, changes)
 
 function Base.push!(d::ColDict, (key, x)::Pair)

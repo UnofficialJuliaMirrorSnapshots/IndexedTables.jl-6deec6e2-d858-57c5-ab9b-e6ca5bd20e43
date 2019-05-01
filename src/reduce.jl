@@ -148,12 +148,14 @@ collectiontype(::Type{<:IndexedTable}) = IndexedTable
 collectiontype(t::Dataset) = collectiontype(typeof(t))
 
 """
-    groupby(f, t, by = pkeynames(t); select, flatten=false)
+    groupby(f, t, by = pkeynames(t); select, flatten=false, usekey = false)
 
 Apply `f` to the `select`-ed columns (see [`select`](@ref)) in groups defined by the
 unique values of `by`.
 
 If `f` returns a vector, split it into multiple columns with `flatten = true`.
+
+To retain the grouping key in the resulting group use `usekey = true`.
 
 # Examples
 
@@ -170,6 +172,11 @@ If `f` returns a vector, split it into multiple columns with `flatten = true`.
 
     # apply different aggregation functions to different columns
     groupby((ymean = :y => mean, zmean = :z => mean), t, :x)
+
+    # include the grouping key
+    groupby(t, by; usekey = true) do key, dd
+        # code using key as key (named tuple) and dd as data
+    end
 """
 function groupby end
 

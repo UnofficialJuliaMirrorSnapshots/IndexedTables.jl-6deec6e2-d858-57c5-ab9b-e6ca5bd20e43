@@ -66,7 +66,8 @@ function collect_columns_flattened(itr, el::Pair, st)
     end
     dest_data = collect_columns(el.second, fr)
     dest_key = collect_columns(el.first for i in dest_data)
-    collect_columns_flattened!(Columns(dest_key => dest_data), itr, el, st)
+    init = Columns{Pair{eltype(dest_key), eltype(dest_data)}}((dest_key, dest_data))
+    collect_columns_flattened!(init, itr, el, st)
 end
 
 function collect_columns_flattened!(dest::Columns{<:Pair}, itr, el::Pair, st)
@@ -79,5 +80,5 @@ function collect_columns_flattened!(dest::Columns{<:Pair}, itr, el::Pair, st)
         dest_data = grow_to_columns!(dest_data, el.second)
         dest_key = grow_to_columns!(dest_key, el.first for i in (n+1):length(dest_data))
     end
-    return Columns(dest_key => dest_data)
+    return Columns{Pair{eltype(dest_key), eltype(dest_data)}}((dest_key, dest_data))
 end

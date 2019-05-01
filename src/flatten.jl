@@ -19,7 +19,7 @@ function mapslices(f, x::NDSparse, dims; name = nothing)
     iterdims = setdiff([1:ndims(x);], map(d->fieldindex(columns(x.index),d), dims))
     idx = Any[Colon() for v in columns(x.index)]
 
-    iter = Columns(astuple(columns(x.index))[[iterdims...]])
+    iter = Columns(getsubfields(columns(x.index), [iterdims...]))
     if !isempty(dims) || !issorted(iter)
         iter = sort(iter)
     end
