@@ -46,10 +46,4 @@ function table(rows::AbstractArray{T}; copy=false, kwargs...) where {T<:Union{Tu
     table(collect_columns(rows); copy=false, kwargs...)
 end
 
-function table(iter; copy=false, kw...)
-    try
-        table(Tables.columntable(iter); copy=copy, kw...)
-    catch e
-        throw(ArgumentError("can't convert input to a table"))
-    end
-end
+table(iter; copy=false, kw...) = table(Tables.columntable(iter); copy=copy, kw...)
