@@ -107,17 +107,21 @@ Base.@pure function arrayof(S)
     if T == Union{}
         Vector{Union{}}
     elseif T<:Tuple
-        Columns{T, staticschema(Tuple{map(arrayof, fieldtypes(T))...})}
+        coltypes = staticschema(Tuple{map(arrayof, fieldtypes(T))...})
+        Columns{T, coltypes, index_type(coltypes)}
     elseif T<:NamedTuple
         if fieldcount(T) == 0
-            Columns{NamedTuple{(), Tuple{}}, NamedTuple{(), Tuple{}}}
+            coltypes = NamedTuple{(), Tuple{}}
+            Columns{NamedTuple{(), Tuple{}}, coltypes, index_type(coltypes)}
         else
-            Columns{T,NamedTuple{fieldnames(T), Tuple{map(arrayof, fieldtypes(T))...}}}
+            coltypes = NamedTuple{fieldnames(T), Tuple{map(arrayof, fieldtypes(T))...}}
+            Columns{T, coltypes, index_type(coltypes)}
         end
     elseif (T<:Union{Missing,String,WeakRefString} && Missing<:T) || T<:Union{String, WeakRefString}
         StringArray{T, 1}
     elseif T<:Pair
-        Columns{T, NamedTuple{(:first, :second), Tuple{map(arrayof, T.parameters)...}}}
+        coltypes = NamedTuple{(:first, :second), Tuple{map(arrayof, T.parameters)...}}
+        Columns{T, coltypes, index_type(coltypes)}
     elseif T <: DataValue
         DataValueArray{eltype(T)}
     else
