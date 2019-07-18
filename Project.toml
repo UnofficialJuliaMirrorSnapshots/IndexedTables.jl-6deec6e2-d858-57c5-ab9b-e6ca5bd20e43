@@ -1,6 +1,6 @@
 name = "IndexedTables"
 uuid = "6deec6e2-d858-57c5-ab9b-e6ca5bd20e43"
-version = "0.12.1"
+version = "0.12.2"
 
 [deps]
 DataValues = "e7dc6d0d-1eca-5fa6-8ad6-5aecde8b7ea5"
@@ -24,6 +24,7 @@ PooledArrays = "0.4.1, 0.5"
 StructArrays = "0.4"
 Tables = "0.2.4"
 TableTraits = "0.3, 0.4, 1"
+TableTraitsUtils = "0.2.1, 0.3, 0.4, 1"
 WeakRefStrings = "0.5.7, 0.6"
 julia = "1"
 
