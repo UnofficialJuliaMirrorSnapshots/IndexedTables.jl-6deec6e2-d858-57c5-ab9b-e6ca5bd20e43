@@ -132,7 +132,7 @@ function pairs(d::NDSparse, idxs::Vararg{Any,N}) where N
     cs = astuple(columns(I))
     data = d.data
     rng = range_estimate(I, idxs)
-    (I[i]=>data[i] for i in Compat.Iterators.Filter(r->row_in(cs, r, idxs), rng))
+    (I[i]=>data[i] for i in Iterators.Filter(r->row_in(cs, r, idxs), rng))
 end
 
 # setindex!
