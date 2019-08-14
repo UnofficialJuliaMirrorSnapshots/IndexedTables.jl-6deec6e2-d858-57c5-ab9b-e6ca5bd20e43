@@ -141,23 +141,6 @@ map_rows(f, iter) = collect_columns(f(i) for i in iter)
 ## Special selectors to simplify column selector
 
 """
-    All(cols::Union{Symbol, Int}...)
-
-Select the union of the selections in `cols`. If `cols == ()`, select all columns.
-
-# Examples
-
-    t = table([1,1,2,2], [1,2,1,2], [1,2,3,4], [0, 0, 0, 0], names=[:a,:b,:c,:d])
-    select(t, All(:a, (:b, :c)))
-    select(t, All())
-"""
-struct All{T}
-    cols::T
-end
-
-All(args...) = All(args)
-
-"""
     Not(cols::Union{Symbol, Int}...)
 
 Select the complementary of the selection in `cols`. `Not` can accept several arguments,
@@ -173,7 +156,7 @@ struct Not{T}
     cols::T
 end
 
-Not(args...) = Not(All(args))
+@deprecate Not(args...) Not(All(args...))
 
 """
     Keys()
@@ -186,21 +169,6 @@ Select the primary keys.
     select(t, Keys())
 """
 struct Keys; end
-
-"""
-    Between(first, last)
-
-Select the columns between `first` and `last`.
-
-# Examples
-
-    t = table([1,1,2,2], [1,2,1,2], 1:4, 'a':'d', names=[:a,:b,:c,:d])
-    select(t, Between(:b, :d))
-"""
-struct Between{T1 <: Union{Int, Symbol}, T2 <: Union{Int, Symbol}}
-    first::T1
-    last::T2
-end
 
 const SpecialSelector = Union{Not, All, Keys, Between, Function, Regex, Type}
 
